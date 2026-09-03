@@ -1,0 +1,6 @@
+package-as: NSRT_CaptainZeynith
+
+ignore:
+  - .github
+  - .gitignore
+  - .pkgmeta
