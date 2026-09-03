@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="Media/logo.jpg" alt="Captain Zeynith Logo" width="220" />
+</p>
+
 # Northern Sky Raid Tools — Captain Zeynith
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
