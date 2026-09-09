@@ -16,7 +16,7 @@ end
 local DEFAULT_CONFIG = {
     enabled = false,                -- Désactivé par défaut sur Ready Check (privilégie le bouton dédié "Check Addons")
     checkOnMyReadyCheckOnly = true, -- Vérifie uniquement quand le joueur lance le ready check
-    stepDelay = 0.8,                -- Délai maximal en secondes par addon en raid (avec avance automatique)
+    stepDelay = 1.4,                -- Délai en secondes par addon en raid (1.4s permet la réception complète des réponses réseau sans décalage)
     announceNoNSRT = true,          -- Signaler les joueurs sans NSRT (No Response)
     addons = {
         "WowUtils",
@@ -206,6 +206,22 @@ function CZ:StartCheck(isManual)
     end
     state.onlineCount = math.max(1, onlineCount)
 
+    -- Initialiser les données et afficher immédiatement le tableau avec l'état de scan
+    CZ.reportData = {
+        roster = roster,
+        addons = state.queue,
+        responses = state.responses,
+        refVersions = state.referenceVer,
+        playerIssues = {},
+        noNSRTPlayers = {},
+        hasIssues = false,
+        isScanning = true,
+        progressText = string.format("Contrôle en cours : %s (1/%d)...", state.queue[1] or "", #state.queue),
+    }
+    if CZ.ShowReportWindow then
+        CZ:ShowReportWindow()
+    end
+
     Print(string.format("Démarrage du contrôle des addons (%d addons à vérifier)...", #state.queue))
     CZ:ProcessNextAddon()
 end
@@ -219,8 +235,8 @@ function CZ:ProcessNextAddon()
     state.currentIndex = state.currentIndex + 1
 
     if state.currentIndex > #state.queue then
-        -- Fin de la queue : court délai de 0.15s pour clore proprement
-        local waitTime = IsInGroup() and 0.15 or 0.05
+        -- Fin de la queue : court délai de 0.2s pour clore proprement
+        local waitTime = IsInGroup() and 0.2 or 0.05
         C_Timer.After(waitTime, function()
             CZ:FinishCheck()
         end)
@@ -256,9 +272,18 @@ function CZ:ProcessNextAddon()
         end
     end
 
-    -- 3. Minuteur de sécurité maximal (0.8s par défaut en groupe, 0.05s en solo)
-    local maxDelay = IsInGroup() and (NSRT_CaptainZeynithDB.stepDelay or 0.8) or 0.05
-    state.stepTimer = C_Timer.NewTimer(maxDelay, function()
+    -- Mise à jour de l'indicateur d'avancement dans le tableau
+    if CZ.reportData then
+        CZ.reportData.isScanning = true
+        CZ.reportData.progressText = string.format("Contrôle en cours : %s (%d/%d)...", addon, state.currentIndex, #state.queue)
+        if CZ.UpdateReportWindow then
+            CZ:UpdateReportWindow()
+        end
+    end
+
+    -- 3. Minuteur dédié par addon (1.4s par défaut en groupe pour garantir que toutes les réponses arrivent sans chevauchement)
+    local stepDelay = IsInGroup() and (NSRT_CaptainZeynithDB.stepDelay or 1.4) or 0.05
+    state.stepTimer = C_Timer.NewTimer(stepDelay, function()
         state.stepTimer = nil
         CZ:ProcessNextAddon()
     end)
@@ -431,9 +456,9 @@ eventFrame:SetScript("OnEvent", function(self, event, ...)
                 NSRT_CaptainZeynithDB.enabled = false
                 NSRT_CaptainZeynithDB.v11Migrated = true
             end
-            if not NSRT_CaptainZeynithDB.v12FastScan then
-                NSRT_CaptainZeynithDB.stepDelay = 0.8
-                NSRT_CaptainZeynithDB.v12FastScan = true
+            if not NSRT_CaptainZeynithDB.v13ReliableScan or (NSRT_CaptainZeynithDB.stepDelay and NSRT_CaptainZeynithDB.stepDelay < 1.2) then
+                NSRT_CaptainZeynithDB.stepDelay = 1.4
+                NSRT_CaptainZeynithDB.v13ReliableScan = true
             end
         end
     elseif event == "PLAYER_LOGIN" then
@@ -452,31 +477,6 @@ eventFrame:SetScript("OnEvent", function(self, event, ...)
                         state.knownNSRTPlayers[clean] = true
                     elseif prev == nil then
                         state.responses[currentAddon][clean] = data.version
-                    end
-
-                    -- DÉTECTION RAPIDE : passer immédiatement à l'addon suivant dès que les réponses sont complètes
-                    if state.stepTimer and IsInGroup() then
-                        local currentResponses = state.responses[currentAddon]
-                        local receivedCount = 0
-                        for _ in pairs(currentResponses) do
-                            receivedCount = receivedCount + 1
-                        end
-
-                        local knownCount = 0
-                        for _ in pairs(state.knownNSRTPlayers) do
-                            knownCount = knownCount + 1
-                        end
-
-                        local allOnlineReplied = (receivedCount >= state.onlineCount)
-                        local allKnownReplied = (state.currentIndex > 1 and knownCount > 1 and receivedCount >= knownCount)
-
-                        if allOnlineReplied or allKnownReplied then
-                            state.stepTimer:Cancel()
-                            state.stepTimer = nil
-                            C_Timer.After(0.04, function()
-                                CZ:ProcessNextAddon()
-                            end)
-                        end
                     end
                 end
             end)

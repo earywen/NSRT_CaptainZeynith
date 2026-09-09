@@ -2,7 +2,7 @@
 ## Title: |cFF00FFFFNorthern Sky Raid Tools - Captain Zeynith|r
 ## Notes: Vérification automatique des versions d'addons lors des Ready Checks (WowUtils, NSRT, BigWigs, RCLootCouncil)
 ## Author: Zeynith
-## Version: 1.2.0
+## Version: 1.2.1
 ## Dependencies: NorthernSkyRaidTools
 ## Group: NorthernSkyRaidTools
 ## IconTexture: Interface\AddOns\NorthernSkyRaidTools\Media\NSLogo.blp

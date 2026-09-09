@@ -62,6 +62,15 @@ local function GetPlayerClassColor(playerName)
     return "FFFFFFFF"
 end
 
+local function FormatVer(v)
+    if not v or v == "" or v == "?" then return "?" end
+    local s = tostring(v)
+    if s:sub(1, 1):lower() == "v" then
+        return s
+    end
+    return "v" .. s
+end
+
 local function CreateStyledButton(parent, text, width, height, onClick)
     local btn = CreateFrame("Button", nil, parent, "BackdropTemplate")
     btn:SetSize(width, height)
@@ -83,12 +92,19 @@ local function CreateStyledButton(parent, text, width, height, onClick)
     btn.Text = txt
 
     btn:SetScript("OnEnter", function(self)
+        if not self:IsEnabled() then return end
         self:SetBackdropColor(0, 0.45, 0.65, 0.4)
         self:SetBackdropBorderColor(0, 1, 1, 0.8)
     end)
     btn:SetScript("OnLeave", function(self)
         self:SetBackdropColor(0.12, 0.12, 0.15, 0.95)
         self:SetBackdropBorderColor(0, 0.8, 1, 0.35)
+    end)
+    btn:HookScript("OnDisable", function(self)
+        if self.Text then self.Text:SetTextColor(0.5, 0.5, 0.5, 1) end
+    end)
+    btn:HookScript("OnEnable", function(self)
+        if self.Text then self.Text:SetTextColor(1, 1, 1, 1) end
     end)
     btn:SetScript("OnClick", function(self)
         PlaySound(SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON)
@@ -300,7 +316,7 @@ function CZ:UpdateReportWindow()
         hAddon:SetJustifyH("LEFT")
 
         local refVer = refVersions[addon] or "?"
-        hAddon:SetText(string.format("|cFFFFFFFF%s|r\n|cFF00FF00(v%s)|r", addon, refVer))
+        hAddon:SetText(string.format("|cFFFFFFFF%s|r\n|cFF00FF00(%s)|r", addon, FormatVer(refVer)))
         hAddon:Show()
         curX = curX + colAddonW
     end
@@ -426,9 +442,9 @@ function CZ:UpdateReportWindow()
             else
                 local cmp = CZ.CompareVersions and CZ.CompareVersions(pVer, refVer) or 0
                 if cmp >= 0 then
-                    cell:SetText(string.format("|cFF00FF00v%s|r", pVer))
+                    cell:SetText(string.format("|cFF00FF00%s|r", FormatVer(pVer)))
                 else
-                    cell:SetText(string.format("|cFFFF5555v%s|r", pVer))
+                    cell:SetText(string.format("|cFFFF5555%s|r", FormatVer(pVer)))
                 end
             end
 
@@ -460,16 +476,27 @@ function CZ:UpdateReportWindow()
     end
 
     -- 5. Mise à jour de la barre de statistiques
-    f.StatsBar:SetText(string.format(
-        "Membres : |cFFFFFFFF%d|r  |  À jour : |cFF00FF00%d|r  |  À corriger : |cFFFF5555%d|r  |  Sans NSRT : |cFF888888%d|r",
-        #sortedPlayers, okCount, issueCount, noNSRTCount
-    ))
-
-    -- Mettre à jour l'état du bouton d'annonce
-    if (issueCount > 0) or (noNSRTCount > 0 and NSRT_CaptainZeynithDB.announceNoNSRT ~= false) then
-        f.BtnAnnounce.Text:SetText("Annoncer les problèmes en Raid")
+    if reportData.isScanning then
+        f.StatsBar:SetText(string.format(
+            "Membres : |cFFFFFFFF%d|r  |  |cFFFFFF00%s|r",
+            #sortedPlayers, reportData.progressText or "Contrôle en cours..."
+        ))
+        if f.BtnAnnounce and f.BtnAnnounce.Disable then f.BtnAnnounce:Disable() end
+        if f.BtnRescan and f.BtnRescan.Disable then f.BtnRescan:Disable() end
     else
-        f.BtnAnnounce.Text:SetText("Annoncer que tout est OK")
+        f.StatsBar:SetText(string.format(
+            "Membres : |cFFFFFFFF%d|r  |  À jour : |cFF00FF00%d|r  |  À corriger : |cFFFF5555%d|r  |  Sans NSRT : |cFF888888%d|r",
+            #sortedPlayers, okCount, issueCount, noNSRTCount
+        ))
+        if f.BtnAnnounce and f.BtnAnnounce.Enable then f.BtnAnnounce:Enable() end
+        if f.BtnRescan and f.BtnRescan.Enable then f.BtnRescan:Enable() end
+
+        -- Mettre à jour l'état du bouton d'annonce
+        if (issueCount > 0) or (noNSRTCount > 0 and NSRT_CaptainZeynithDB.announceNoNSRT ~= false) then
+            f.BtnAnnounce.Text:SetText("Annoncer les problèmes en Raid")
+        else
+            f.BtnAnnounce.Text:SetText("Annoncer que tout est OK")
+        end
     end
 end
 

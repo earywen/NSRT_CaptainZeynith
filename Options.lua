@@ -94,10 +94,10 @@ local function BuildOptionsPanel(contentFrame)
     curY = curY - 34
 
     -- Slider de délai réseau
-    local sliderDelay = C.CreateSlider(contentFrame, "Délai réseau max par addon (s)",
-        function() return NSRT_CaptainZeynithDB.stepDelay or 0.8 end,
+    local sliderDelay = C.CreateSlider(contentFrame, "Délai réseau par addon (s)",
+        function() return NSRT_CaptainZeynithDB.stepDelay or 1.4 end,
         function(v) NSRT_CaptainZeynithDB.stepDelay = v end,
-        420, 22, 0.4, 2.5, 0.1, nil, "Délai de sécurité maximal. Grâce à la détection réactive, le scan avance automatiquement dès que les membres ont répondu.", true, 1, true)
+        420, 22, 1.0, 3.0, 0.1, nil, "Temps d'attente (secondes) par addon en raid. 1.4s est recommandé pour que tous les membres aient le temps de répondre sans décalage.", true, 1, true)
     sliderDelay:SetPoint("TOPLEFT", contentFrame, "TOPLEFT", colLeftX, curY)
     curY = curY - 45
 
